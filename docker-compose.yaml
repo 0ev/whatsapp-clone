@@ -21,12 +21,16 @@ services:
 
   postgres:
     image: postgres:latest
+    shm_size: 128mb
+    restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: messaging
     ports:
       - "5432:5432"
+
+  
 
   flask:
     build:

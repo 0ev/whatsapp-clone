@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 import psycopg2
+from psycopg2 import OperationalError
 from kafka import KafkaProducer
 import json
+import time
 
 app = Flask(__name__)
 
@@ -14,10 +16,16 @@ producer = KafkaProducer(
 
 # Database connection
 def get_db_connection():
-    conn = psycopg2.connect(
-        dbname='messaging', user='user', password='password', host='postgres'
-    )
-    return conn
+    while True:
+        try:
+            conn = psycopg2.connect(
+                dbname='messaging', user='user', password='password', host='postgres'
+            )
+            return conn
+        except OperationalError:
+            print("Database is not ready yet. Retrying in 5 seconds...")
+            time.sleep(5)
+
 
 
 # Create tables if they don't exist
@@ -82,4 +90,5 @@ def send_message():
 
 if __name__ == '__main__':
     create_tables()
+    print("31")
     app.run(debug=True, host="0.0.0.0", port=5000)
