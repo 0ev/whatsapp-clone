@@ -9,6 +9,7 @@ app = FastAPI()
 consumer = KafkaConsumer(
     'message_topic',
     bootstrap_servers='localhost:9093',
+    api_version=(0, 10, 1),
     group_id='message_group',
     value_deserializer=lambda x: json.loads(x.decode('utf-8'))
 )
