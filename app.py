@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS from flask_cors
 import psycopg2
 from psycopg2 import OperationalError
 from kafka import KafkaProducer
@@ -6,7 +7,7 @@ import json
 import time
 
 app = Flask(__name__)
-
+CORS(app)
 # Kafka producer setup
 producer = KafkaProducer(
     bootstrap_servers='kafka:9093',
