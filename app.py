@@ -8,13 +8,14 @@ app = Flask(__name__)
 # Kafka producer setup
 producer = KafkaProducer(
     bootstrap_servers='kafka:9093',
+    api_version=(0, 10, 1),
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
 # Database connection
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname='messaging', user='user', password='password', host='localhost'
+        dbname='messaging', user='user', password='password', host='postgres'
     )
     return conn
 
