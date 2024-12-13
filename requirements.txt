@@ -1,0 +1,6 @@
+flask==2.2.3
+psycopg2-binary==2.9.3
+werkzeug==2.2.3
+kafka-python==2.0.2
+fastapi==0.95.0
+uvicorn==0.22.0
