@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with User {{ partner_id }}</title>
+    <style>
+        .chat-container { width: 100%; max-width: 600px; margin: 0 auto; }
+        .message { padding: 10px; margin-bottom: 10px; }
+        .message.sent { background-color: lightgreen; text-align: right; }
+        .message.received { background-color: lightgray; text-align: left; }
+        .input-container { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>Chat with User {{ partner_id }}</h2>
+
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {% if message.sender_id == 1 %}sent{% else %}received{% endif %}">
+                    <p><strong>{{ message.sender_name }}:</strong> {{ message.content }}</p>
+                    <small>{{ message.timestamp }}</small>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="input-container">
+            <textarea id="content" rows="4" cols="50" placeholder="Type your message here..." required></textarea><br><br>
+            <button id="sendMessageBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('sendMessageBtn').addEventListener('click', async function() {
+            const content = document.getElementById('content').value;
+            const receiver_id = {{ partner_id }};
+            
+            // Prepare the message data
+            const messageData = {
+                receiver_id: receiver_id,
+                content: content
+            };
+
+            // Send the message to Flask backend first, which will forward to FastAPI
+            try {
+                const response = await fetch('/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(messageData)
+                });
+
+                const data = await response.json();
+
+                if (response.status === 200) {
+                    alert(data.message); // Show success message
+                    document.getElementById('content').value = ''; // Clear input
+                    // Optionally, you can refresh the messages here if needed
+                } else {
+                    alert('Error: ' + data.detail); // Show error message
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('An error occurred while sending the message.');
+            }
+        });
+    </script>
+</body>
+</html>
