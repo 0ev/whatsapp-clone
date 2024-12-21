@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, url_for, flash, redirect, ses
 import requests
 from config.config import SECRET_KEY
 import time
+from datetime import datetime
 
 BACKEND_URL = "http://127.0.0.1:8000"
 
@@ -105,7 +106,8 @@ def send_message():
     response = requests.post(f"{BACKEND_URL}/send", json={
         "token": token,
         "receiver_id": receiver_id,
-        "content": content
+        "content": content,
+        "timestamp":datetime.utcnow().isoformat()
     })
 
     # Handle the response from FastAPI
@@ -113,6 +115,27 @@ def send_message():
         return jsonify({"message": "Message sent successfully"}), 200
     else:
         return jsonify({"detail": "Failed to send message"}), response.status_code
-        
+
+@app.route('/refresh/<int:partner_id>', methods=['GET'])
+def refresh(partner_id):
+    # Ensure the token is provided
+    if "token" not in session:
+        flash(f"You need to log in first", "warning")
+        return redirect(url_for("login"))
+
+    token = session["token"]
+
+    # Forward the message to FastAPI backend
+    response = requests.get(f"{BACKEND_URL}/refresh", json={
+        "token": token,
+        "partner_id": partner_id,
+    })
+
+    # Handle the response from FastAPI
+    if response.status_code == 200:
+        return jsonify({"messages": response.json().get("messages",[])}), 200
+    else:
+        return jsonify({"detail": "Failed to refresh"}), response.status_code
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

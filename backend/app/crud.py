@@ -10,6 +10,10 @@ async def get_user_by_username(db: AsyncSession, username: str):
     result = await db.execute(select(User).where(User.username == username))
     return result.scalar_one_or_none()
 
+async def get_username_by_id(db: AsyncSession, id: int):
+    result = await db.execute(select(User).where(User.id == id))
+    return result.scalar_one_or_none().username
+
 async def create_user(db: AsyncSession, username: str, password: str):
     new_user = User(username=username, password=password)
     db.add(new_user)

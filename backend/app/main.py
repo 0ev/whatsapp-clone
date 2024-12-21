@@ -4,12 +4,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.database import get_db
-from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users, get_latest_messages_overview
+
+from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users, get_username_by_id , get_latest_messages_overview
+
 from app.tools.encryption import hash_password, verify_password
 from app.tools.token import create_access_token, verify_jwt_token
+from app.tools.misc import sort_and_convert_to_string
 
+from kafka import KafkaConsumer, TopicPartition, KafkaProducer
+
+import json
+from datetime import datetime
 app = FastAPI()
-
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 @app.post("/register")
 async def create_new_user(user: dict, db: AsyncSession = Depends(get_db)):
     existing_user = await get_user_by_username(db, user["username"])
@@ -35,8 +45,19 @@ async def send_message(send_message_request: dict, response: Response, db: Async
         raise HTTPException( status_code=status.HTTP_400_BAD_REQUEST, detail="sender_id is missing")
     if "content" not in send_message_request:
         raise HTTPException( status_code=status.HTTP_400_BAD_REQUEST, detail="content is missing")
-    
+
     message = await send_message_db(db, token_payload["id"], send_message_request["receiver_id"], send_message_request["content"])
+    
+    payload={
+        "sender_id":message.sender_id,
+        "receiver_id":message.recipient_id_user,
+        "content":message.content,
+        "timestamp":message.timestamp.isoformat()
+    }
+    topic=sort_and_convert_to_string(message.sender_id, message.recipient_id_user)
+    
+    producer.send(topic, value=payload)
+
     return {"message": "Message is sent succesfully"}
 
 @app.get("/messages")
@@ -46,10 +67,28 @@ async def messages(messages_body: dict, response: Response, db: AsyncSession = D
     token_payload=verify_jwt_token(messages_body["token"])
     if "partner_id" not in messages_body:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="partner_id is missing")
-    
+
+    topic=sort_and_convert_to_string(token_payload["id"], messages_body["partner_id"])
+    consumer = KafkaConsumer(
+        topic,
+        bootstrap_servers='localhost:9092', 
+        auto_offset_reset='earliest',
+        group_id=token_payload["username"]
+    )
+    timeout_ms = 10  # Set a small timeout to avoid blocking
+    while not consumer.assignment():
+        consumer.poll(timeout_ms=timeout_ms)
+
+    # Once partitions are assigned, seek to the end (latest offset) for each partition
+    for partition in consumer.assignment():
+        consumer.seek_to_end(partition)
+
+    consumer.close()  
+
     messages = await get_messages_between_users(db, token_payload["id"], messages_body["partner_id"])
     print(messages)
     return {"messages":messages}
+
     
 @app.get("/messages/overview")
 async def messages_overview(messages_body: dict, db: AsyncSession = Depends(get_db)):
@@ -66,3 +105,58 @@ async def messages_overview(messages_body: dict, db: AsyncSession = Depends(get_
     conversations = await get_latest_messages_overview(db, user_id)
 
     return {"conversations": conversations}
+
+
+@app.get("/refresh")
+async def refresh (request_body: dict, response: Response, db: AsyncSession = Depends(get_db)):
+    if "token" not in request_body:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token is missing")
+    token_payload=verify_jwt_token(request_body["token"])
+    if "partner_id" not in request_body:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="partner_id is missing")
+
+    consumer = KafkaConsumer(
+        sort_and_convert_to_string(token_payload["id"], request_body["partner_id"]),
+        bootstrap_servers='localhost:9092', 
+        auto_offset_reset='earliest',
+        group_id=token_payload["username"]
+    )
+
+    messages = []
+    timeout = 100
+    while True:
+        msg_batch = consumer.poll(timeout_ms=timeout)
+        consumer.commit()
+
+        if msg_batch:
+            for partition, messages_list in msg_batch.items():
+                for msg in messages_list:
+
+                    message_content = msg.value.decode('utf-8')  # Assuming the message is UTF-8 encoded
+
+                    try:
+                        message_json = json.loads(message_content)
+                        print(message_content)
+                        sender_id=message_json.get('sender_id')
+                        content=message_json.get('content')
+                        timestamp=message_json.get('timestamp')
+
+                        message={"sender_name": await get_username_by_id(db, sender_id),
+                            "content":content,
+                            "timestamp":timestamp
+                        }
+
+                    except json.JSONDecodeError:
+                        print(f"Failed to parse message as JSON: {message_content}")
+
+                    messages.append(message)
+                    print(f"Consumed message: {message}")
+        
+        else:  # No messages in the batch, meaning no more messages left to consume
+            print("No more messages available.")
+            break
+
+    consumer.close()
+    print(messages)
+    return {"messages":messages}
+

@@ -13,10 +13,13 @@
     </style>
 </head>
 <body>
+    <form method="POST" action="/logout">
+        <button type="submit">Log Out</button>
+    </form>
     <div class="chat-container">
         <h2>Chat with User {{ partner_id }}</h2>
 
-        <div class="messages">
+        <div class="messages" id="message-container">
             {% for message in messages %}
                 <div class="message {% if message.sender_id == 1 %}sent{% else %}received{% endif %}">
                     <p><strong>{{ message.sender_name }}:</strong> {{ message.content }}</p>
@@ -32,6 +35,37 @@
     </div>
 
     <script>
+        // Function to fetch and update messages from the backend
+        async function fetchMessages() {
+            try {
+                const response = await fetch(`/refresh/{{ partner_id }}`);
+                const data = await response.json();
+
+                if (response.status === 200) {
+                    const messageContainer = document.getElementById('message-container');
+
+                    // Append new messages to the existing ones
+                    data.messages.forEach(message => {
+                        const messageElement = document.createElement('div');
+                        messageElement.classList.add('message', message.sender_id === 1 ? 'sent' : 'received');
+                        messageElement.innerHTML = `
+                            <p><strong>${message.sender_name}:</strong> ${message.content}</p>
+                            <small>${message.timestamp}</small>
+                        `;
+                        messageContainer.appendChild(messageElement);
+                    });
+
+                    // Scroll to the bottom of the message container
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                } else {
+                    console.error('Error fetching messages');
+                }
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+            }
+        }
+
+        // Send message to the backend
         document.getElementById('sendMessageBtn').addEventListener('click', async function() {
             const content = document.getElementById('content').value;
             const receiver_id = {{ partner_id }};
@@ -55,17 +89,18 @@
                 const data = await response.json();
 
                 if (response.status === 200) {
-                    alert(data.message); // Show success message
                     document.getElementById('content').value = ''; // Clear input
-                    // Optionally, you can refresh the messages here if needed
+                    fetchMessages(); // Refresh messages after sending a new one
                 } else {
-                    alert('Error: ' + data.detail); // Show error message
+                    console.error('Error: ' + data.detail); // Show error message
                 }
             } catch (error) {
                 console.error('Error sending message:', error);
-                alert('An error occurred while sending the message.');
             }
         });
+
+        // Set an interval to refresh messages every 5 seconds (adjust as needed)
+        setInterval(fetchMessages, 5000); // Refresh every 5 seconds
     </script>
 </body>
 </html>
