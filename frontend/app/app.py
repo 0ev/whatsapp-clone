@@ -109,5 +109,6 @@ def send_message():
         return jsonify({"message": "Message sent successfully"}), 200
     else:
         return jsonify({"detail": "Failed to send message"}), response.status_code
+        
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
