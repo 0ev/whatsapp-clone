@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, flash, redirect, session, make_response
+from flask import Flask, render_template, request, url_for, flash, redirect, session, make_response, jsonify
 import requests
 from config.config import SECRET_KEY
 import time
@@ -85,8 +85,6 @@ def messages(partner_id):
         return redirect(url_for('login'))
     elif response.status_code == 200:
         return render_template('chat.html', messages=response.json().get('messages',[]), partner_id=partner_id)
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
@@ -94,7 +92,7 @@ def send_message():
     if "token" not in session:
         flash(f"You need to log in first", "warning")
         return redirect(url_for("login"))
-    
+
     token = session["token"]
     receiver_id = request.json["receiver_id"]
     content = request.json["content"]
@@ -111,3 +109,5 @@ def send_message():
         return jsonify({"message": "Message sent successfully"}), 200
     else:
         return jsonify({"detail": "Failed to send message"}), response.status_code
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

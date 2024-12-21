@@ -13,10 +13,10 @@ async def create_user(db: AsyncSession, username: str, password: str):
     await db.refresh(new_user)
     return new_user
 
-async def send_message(db: AsyncSession, sender_id: int, recipient_id: int, content: str) -> Message:
+async def send_message_db(db: AsyncSession, sender_id: int, recipient_id: int, content: str) -> Message:
     new_message = Message(
         sender_id=sender_id,
-        recipient_id=recipient_id,
+        recipient_id_user=recipient_id,
         content=content
     )
     db.add(new_message)

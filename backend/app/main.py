@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.database import get_db
-from app.crud import get_user_by_username, create_user, send_message, get_messages_between_users
+from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users
 from app.tools.encryption import hash_password, verify_password
 from app.tools.token import create_access_token, verify_jwt_token
 
@@ -36,7 +36,7 @@ async def send_message(send_message_request: dict, response: Response, db: Async
     if "content" not in send_message_request:
         raise HTTPException( status_code=status.HTTP_400_BAD_REQUEST, detail="content is missing")
     
-    message = await send_message(db, token_payload["id"],send_message_request["receiver_id"], send_message_request["content"])
+    message = await send_message_db(db, token_payload["id"], send_message_request["receiver_id"], send_message_request["content"])
     return {"message": "Message is sent succesfully"}
 
 @app.get("/messages")
