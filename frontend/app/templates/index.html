@@ -5,48 +5,18 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
-        #messageInput { width: 80%; }
     </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
     <form method="POST" action="/logout">
         <button type="submit">Log Out</button>
     </form>
 
     <h1>WhatsApp Clone</h1>
-    <div id="chat"></div>
-    <input id="messageInput" type="text" placeholder="Type a message..." />
-    <button onclick="sendMessage()">Send</button>
-    
-
-    <script>
-        const chatDiv = document.getElementById("chat");
-        const messageInput = document.getElementById("messageInput");
-
-        const ws = new WebSocket(`ws://${location.hostname}:8000/ws`);
-
-        ws.onmessage = (event) => {
-            const message = document.createElement("div");
-            message.textContent = event.data;
-            chatDiv.appendChild(message);
-            console.log("message received")
-        };
-
-        function sendMessage() {
-            const message = messageInput.value;
-            ws.send(message);
-            messageInput.value = "";
-            console.log("message sent")
-        }
-    </script>
+    <div id="chat">
+        {% for convo in conversations %}
+        <a href="/message/{{ convo.partner_id }}">{{ convo.partner_name }}</a><br>
+        {% endfor %}
+    </div>
 </body>
 </html>

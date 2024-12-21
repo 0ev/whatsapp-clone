@@ -11,9 +11,13 @@ app.secret_key = SECRET_KEY
 @app.route("/")
 def index():
     if "token" not in session:
-            flash(f"You need to log in first", "warning")
-            return redirect(url_for("login"))
-    return render_template("index.html")
+        flash(f"You need to log in first", "warning")
+        return redirect(url_for("login"))
+    response = requests.get(f"{BACKEND_URL}/messages/overview", json={
+            "token": session["token"]
+        })
+    if response.status_code == 200:
+        return render_template('index.html', conversations=response.json().get('conversations',[]))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

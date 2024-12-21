@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.database import get_db
-from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users
+from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users, get_latest_messages_overview
 from app.tools.encryption import hash_password, verify_password
 from app.tools.token import create_access_token, verify_jwt_token
 
@@ -51,3 +51,18 @@ async def messages(messages_body: dict, response: Response, db: AsyncSession = D
     print(messages)
     return {"messages":messages}
     
+@app.get("/messages/overview")
+async def messages_overview(messages_body: dict, db: AsyncSession = Depends(get_db)):
+    if "token" not in messages_body:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token is missing")
+
+    token_payload = verify_jwt_token(messages_body["token"])
+
+    # Validate user_id in token payload
+    user_id = token_payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload")
+
+    conversations = await get_latest_messages_overview(db, user_id)
+
+    return {"conversations": conversations}
