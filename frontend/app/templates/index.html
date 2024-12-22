@@ -18,5 +18,35 @@
         <a href="/message/{{ convo.partner_id }}">{{ convo.partner_name }}</a><br>
         {% endfor %}
     </div>
+    <!-- Search Form -->
+    <div id="search-container">
+        <form method="GET" action="/search">
+            <label for="username">Search for a user:</label>
+            <input type="text" id="username" name="username" required placeholder="Enter username">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <div id="flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
+<!--    <script>
+    window.onload = function() {
+        setTimeout(() => {
+            const flashMessages = document.getElementById('flash-messages');
+            if (flashMessages) {
+                flashMessages.style.display = 'none';
+            }
+        }, 5000); // Adjust the time as needed
+    };
+    </script>-->
 </body>
 </html>

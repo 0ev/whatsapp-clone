@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, flash, redirect, session, make_response, jsonify
+from flask import Flask, render_template, request, url_for, flash, redirect, session, make_response, jsonify, get_flashed_messages
 import requests
 from config.config import SECRET_KEY
 import time
@@ -11,6 +11,7 @@ app.secret_key = SECRET_KEY
 
 @app.route("/")
 def index():
+    flash_messages = get_flashed_messages(with_categories=True)
     if "token" not in session:
         flash(f"You need to log in first", "warning")
         return redirect(url_for("login"))
@@ -18,7 +19,11 @@ def index():
             "token": session["token"]
         })
     if response.status_code == 200:
-        return render_template('index.html', conversations=response.json().get('conversations',[]))
+        return render_template('index.html', conversations=response.json().get('conversations',[]), messages=flash_messages)
+    else:
+        flash("Failed to load conversations. Please try again.", "danger")
+        return render_template('index.html', conversations=[], messages=flash_messages)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -89,7 +94,19 @@ def messages(partner_id):
             session.pop("token", None)
         return redirect(url_for('login'))
     elif response.status_code == 200:
-        return render_template('chat.html', messages=response.json().get('messages',[]), partner_id=partner_id)
+        # Fetch partner's name using the partner_id
+        partner_response = requests.get(f"{BACKEND_URL}/user/{partner_id}", json={
+            "token": session["token"]
+        })
+
+        if partner_response.status_code == 200:
+            partner_name = partner_response.json().get('name')  # Assuming 'name' is the correct field
+        else:
+            partner_name = 'Unknown User'  # Fallback if partner data isn't available
+
+        # Render chat page with partner_name and partner_id
+        return render_template('chat.html', messages=response.json().get('messages', []), partner_name=partner_name, partner_id=partner_id)
+
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
@@ -119,10 +136,6 @@ def send_message():
 @app.route('/refresh/<int:partner_id>', methods=['GET'])
 def refresh(partner_id):
     # Ensure the token is provided
-    if "token" not in session:
-        flash(f"You need to log in first", "warning")
-        return redirect(url_for("login"))
-
     token = session["token"]
 
     # Forward the message to FastAPI backend
@@ -136,6 +149,38 @@ def refresh(partner_id):
         return jsonify({"messages": response.json().get("messages",[])}), 200
     else:
         return jsonify({"detail": "Failed to refresh"}), response.status_code
+
+@app.route("/search", methods=["GET"])
+def search_user():
+
+    if "token" not in session:
+        flash(f"You need to log in first", "warning")
+        return redirect(url_for("login"))
+
+    username = request.args.get("username")
+    if not username:
+        flash("Username is required for search", "warning")
+        return redirect(url_for("index"))
+
+    response = requests.get(f"{BACKEND_URL}/search_db", json={
+        "token": session["token"],
+        "username": username
+    })
+
+    if response.status_code == 200:
+        search_results = response.json().get('results', [])
+        if search_results:
+            # Redirect to the message page of the first matching user
+            search_id = search_results[0]['id']
+            # serach_name = search_results[0]['name']
+            return redirect(url_for("messages", partner_id=search_id))
+        else:
+            # Show popup if user doesn't exist
+            flash("User does not exist", "warning")
+            return index()
+    else:
+        flash("Failed to retrieve search results. Please try again.", "danger")
+        return index()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

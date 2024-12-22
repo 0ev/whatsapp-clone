@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.database import get_db
-
 from app.crud import get_user_by_username, create_user, send_message_db, get_messages_between_users, get_username_by_id , get_latest_messages_overview
 
 from app.tools.encryption import hash_password, verify_password
@@ -159,4 +158,36 @@ async def refresh (request_body: dict, response: Response, db: AsyncSession = De
     consumer.close()
     print(messages)
     return {"messages":messages}
+
+
+@app.get("/search_db")
+async def search_user(search_body: dict, db: AsyncSession = Depends(get_db)):
+    if "token" not in search_body:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is missing")
+    token_payload = verify_jwt_token(search_body["token"])
+
+    user_id = token_payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload")
+    username = search_body.get("username")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username is required")
+
+    user = await get_user_by_username(db, username)
+    # if not users:
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Username {username} not found")
+    if user:
+        return {"results": [{"id": user.id, "username": user.username}]}
+    else:
+        return {"results": []}
+    # return {"results": [{"id": user.id, "username": user.username} for user in users]}
+
+
+@app.get("/user/{user_id}")
+async def user_by_id(user_id: int, db: AsyncSession = Depends(get_db)):
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"id": user.id, "name": user.username}
 

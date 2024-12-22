@@ -6,9 +6,26 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+# async def get_user_by_username(db: AsyncSession, username: str):
+#     result = await db.execute(select(User).where(User.username == username))
+#     return result.scalar_one_or_none()
 async def get_user_by_username(db: AsyncSession, username: str):
-    result = await db.execute(select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(User).where(User.username == username))
+        user = result.scalar_one_or_none()  # This returns a single User object or None
+        return user
+    except Exception as e:
+        # Optionally log the exception here if needed
+        return None
+
+async def get_user_by_id(db: AsyncSession, user_id: int):
+    try:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()  # This returns a single User object or None
+        return user
+    except Exception as e:
+        # Optionally log the exception here if needed
+        return None
 
 async def get_username_by_id(db: AsyncSession, id: int):
     result = await db.execute(select(User).where(User.id == id))

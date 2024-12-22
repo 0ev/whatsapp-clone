@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with User {{ partner_id }}</title>
+    <title>Chat with {{ partner_name }}</title>
     <style>
         .chat-container { width: 100%; max-width: 600px; margin: 0 auto; }
         .message { padding: 10px; margin-bottom: 10px; }
@@ -16,8 +16,10 @@
     <form method="POST" action="/logout">
         <button type="submit">Log Out</button>
     </form>
+
     <div class="chat-container">
-        <h2>Chat with User {{ partner_id }}</h2>
+        <a href="/"><button id="homeButton">Home</button></a>
+        <h2>Chat with {{ partner_name }}</h2>
 
         <div class="messages" id="message-container">
             {% for message in messages %}
