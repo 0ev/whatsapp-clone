@@ -94,18 +94,11 @@ def messages(partner_id):
             session.pop("token", None)
         return redirect(url_for('login'))
     elif response.status_code == 200:
-        # Fetch partner's name using the partner_id
-        partner_response = requests.get(f"{BACKEND_URL}/user/{partner_id}", json={
-            "token": session["token"]
-        })
 
-        if partner_response.status_code == 200:
-            partner_name = partner_response.json().get('name')  # Assuming 'name' is the correct field
-        else:
-            partner_name = 'Unknown User'  # Fallback if partner data isn't available
-
-        # Render chat page with partner_name and partner_id
-        return render_template('chat.html', messages=response.json().get('messages', []), partner_name=partner_name, partner_id=partner_id)
+        partner_username=response.json().get('partner_username',"")
+        user_username=response.json().get('user_username',"")
+        messages=response.json().get('messages',[])
+        return render_template('chat.html', messages=messages,partner_username=partner_username,partner_id=partner_id, user_username=user_username)
 
 
 @app.route('/send_message', methods=['POST'])
@@ -129,7 +122,7 @@ def send_message():
 
     # Handle the response from FastAPI
     if response.status_code == 200:
-        return jsonify({"message": "Message sent successfully"}), 200
+        return jsonify({"message": "Message sent successfully", "message_sent":response.json().get("message_sent")}), 200
     else:
         return jsonify({"detail": "Failed to send message"}), response.status_code
 

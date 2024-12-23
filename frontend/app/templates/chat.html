@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with {{ partner_name }}</title>
+
+    <title>chat with user {{partner_username}}</title>
+
     <style>
         .chat-container { width: 100%; max-width: 600px; margin: 0 auto; }
         .message { padding: 10px; margin-bottom: 10px; }
@@ -18,12 +20,14 @@
     </form>
 
     <div class="chat-container">
+
         <a href="/"><button id="homeButton">Home</button></a>
-        <h2>Chat with {{ partner_name }}</h2>
+        <h2>chat with user {{ partner_username }}</h2>
+
 
         <div class="messages" id="message-container">
             {% for message in messages %}
-                <div class="message {% if message.sender_id == 1 %}sent{% else %}received{% endif %}">
+                <div class="message {% if message.sender_id== partner_id %} received {% else %} sent {% endif %}">
                     <p><strong>{{ message.sender_name }}:</strong> {{ message.content }}</p>
                     <small>{{ message.timestamp }}</small>
                 </div>
@@ -37,6 +41,9 @@
     </div>
 
     <script>
+        var user_username = "{{ user_username }}";
+        var partner_username = "{{ partner_username}}";
+        var partner_id = "{{ partner_id}}";
         // Function to fetch and update messages from the backend
         async function fetchMessages() {
             try {
@@ -49,9 +56,9 @@
                     // Append new messages to the existing ones
                     data.messages.forEach(message => {
                         const messageElement = document.createElement('div');
-                        messageElement.classList.add('message', message.sender_id === 1 ? 'sent' : 'received');
+                        messageElement.classList.add('message','received');
                         messageElement.innerHTML = `
-                            <p><strong>${message.sender_name}:</strong> ${message.content}</p>
+                            <p><strong>${partner_username}:</strong> ${message.content}</p>
                             <small>${message.timestamp}</small>
                         `;
                         messageContainer.appendChild(messageElement);
@@ -92,7 +99,14 @@
 
                 if (response.status === 200) {
                     document.getElementById('content').value = ''; // Clear input
-                    fetchMessages(); // Refresh messages after sending a new one
+                    const messageContainer = document.getElementById('message-container');
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message','sent');
+                    messageElement.innerHTML = `
+                        <p><strong>${user_username}:</strong> ${content}</p>
+                        <small>${data.message_sent.timestamp}</small>
+                    `;
+                    messageContainer.appendChild(messageElement);
                 } else {
                     console.error('Error: ' + data.detail); // Show error message
                 }
@@ -102,7 +116,7 @@
         });
 
         // Set an interval to refresh messages every 5 seconds (adjust as needed)
-        setInterval(fetchMessages, 5000); // Refresh every 5 seconds
+        setInterval(fetchMessages, 10000); // Refresh every 5 seconds
     </script>
 </body>
 </html>

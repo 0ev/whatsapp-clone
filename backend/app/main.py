@@ -53,11 +53,11 @@ async def send_message(send_message_request: dict, response: Response, db: Async
         "content":message.content,
         "timestamp":message.timestamp.isoformat()
     }
-    topic=sort_and_convert_to_string(message.sender_id, message.recipient_id_user)
+    #topic=sort_and_convert_to_string(message.sender_id, message.recipient_id_user)
     
-    producer.send(topic, value=payload)
+    producer.send(str(message.recipient_id_user), value=payload)
 
-    return {"message": "Message is sent succesfully"}
+    return {"message": "Message is sent succesfully", "message_sent":message}
 
 @app.get("/messages")
 async def messages(messages_body: dict, response: Response, db: AsyncSession = Depends(get_db)):
@@ -67,13 +67,17 @@ async def messages(messages_body: dict, response: Response, db: AsyncSession = D
     if "partner_id" not in messages_body:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="partner_id is missing")
 
-    topic=sort_and_convert_to_string(token_payload["id"], messages_body["partner_id"])
+    partner_id= messages_body["partner_id"]
+    user_id=token_payload["id"]
+    topic = str(user_id)
+
     consumer = KafkaConsumer(
         topic,
-        bootstrap_servers='localhost:9092', 
-        auto_offset_reset='earliest',
-        group_id=token_payload["username"]
+        bootstrap_servers='localhost:9092',
+        group_id=topic,
+        auto_offset_reset='earliest',  # or 'latest' depending on your need
     )
+
     timeout_ms = 10  # Set a small timeout to avoid blocking
     while not consumer.assignment():
         consumer.poll(timeout_ms=timeout_ms)
@@ -81,12 +85,12 @@ async def messages(messages_body: dict, response: Response, db: AsyncSession = D
     # Once partitions are assigned, seek to the end (latest offset) for each partition
     for partition in consumer.assignment():
         consumer.seek_to_end(partition)
+    consumer.close()
 
-    consumer.close()  
-
-    messages = await get_messages_between_users(db, token_payload["id"], messages_body["partner_id"])
+    messages = await get_messages_between_users(db, user_id, partner_id)
+    partner_username=await get_username_by_id(db,partner_id)
     print(messages)
-    return {"messages":messages}
+    return {"messages":messages, "partner_username":partner_username, "user_username":token_payload["username"]}
 
     
 @app.get("/messages/overview")
@@ -114,15 +118,17 @@ async def refresh (request_body: dict, response: Response, db: AsyncSession = De
     if "partner_id" not in request_body:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="partner_id is missing")
 
+    user_id=token_payload["id"]
+    partner_id=request_body["partner_id"]
     consumer = KafkaConsumer(
-        sort_and_convert_to_string(token_payload["id"], request_body["partner_id"]),
+        str(user_id),
         bootstrap_servers='localhost:9092', 
         auto_offset_reset='earliest',
-        group_id=token_payload["username"]
+        group_id=str(user_id)
     )
 
     messages = []
-    timeout = 100
+    timeout = 250
     while True:
         msg_batch = consumer.poll(timeout_ms=timeout)
         consumer.commit()
@@ -135,13 +141,13 @@ async def refresh (request_body: dict, response: Response, db: AsyncSession = De
 
                     try:
                         message_json = json.loads(message_content)
+                        if message_json.get("sender_id")!=partner_id:
+                            continue
                         print(message_content)
-                        sender_id=message_json.get('sender_id')
                         content=message_json.get('content')
                         timestamp=message_json.get('timestamp')
 
-                        message={"sender_name": await get_username_by_id(db, sender_id),
-                            "content":content,
+                        message={"content":content,
                             "timestamp":timestamp
                         }
 

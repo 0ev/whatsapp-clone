@@ -70,6 +70,7 @@ async def get_messages_between_users(db: AsyncSession, user1_id: int, user2_id: 
     messages_with_names = [
         {
             'sender_name': message[1].username,  # message[1] is the User object (sender)
+            'sender_id' : message[1].id,
             'content': message[0].content,       # message[0] is the Message object
             'timestamp': message[0].timestamp,   # Timestamp of the message
         }
