@@ -14,9 +14,12 @@ from kafka import KafkaConsumer, TopicPartition, KafkaProducer
 
 import json
 from datetime import datetime
+
+KAFKA_BROKER = 'kafka:9093'
+
 app = FastAPI()
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers=KAFKA_BROKER,
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 @app.post("/register")
@@ -70,17 +73,22 @@ async def messages(messages_body: dict, response: Response, db: AsyncSession = D
     partner_id= messages_body["partner_id"]
     user_id=token_payload["id"]
     topic = str(user_id)
-
+    print("before kafka")
     consumer = KafkaConsumer(
         topic,
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers=KAFKA_BROKER,
         group_id=topic,
-        auto_offset_reset='earliest',  # or 'latest' depending on your need
+        auto_offset_reset='latest',
+        enable_auto_commit=True,
+        consumer_timeout_ms=1000,
     )
+    consumer.subscribe([topic])  # Ensure the consumer is subscribed
+    print("after kafka")
 
     timeout_ms = 10  # Set a small timeout to avoid blocking
     while not consumer.assignment():
-        consumer.poll(timeout_ms=timeout_ms)
+        print("Waiting for partition assignment...")
+        consumer.poll(timeout_ms=500)  # Increase timeout to 500ms or more
 
     # Once partitions are assigned, seek to the end (latest offset) for each partition
     for partition in consumer.assignment():
@@ -122,7 +130,7 @@ async def refresh (request_body: dict, response: Response, db: AsyncSession = De
     partner_id=request_body["partner_id"]
     consumer = KafkaConsumer(
         str(user_id),
-        bootstrap_servers='localhost:9092', 
+        bootstrap_servers=KAFKA_BROKER,
         auto_offset_reset='earliest',
         group_id=str(user_id)
     )

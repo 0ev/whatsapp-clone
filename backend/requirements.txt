@@ -1,0 +1,9 @@
+asyncio
+flask
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+passlib
+PyJWT
+kafka-python

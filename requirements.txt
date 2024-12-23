@@ -1,0 +1,7 @@
+asyncio
+flask
+fastapi
+uvicorn
+sqlalchemy
+asyncsqlalchemy
+psycopg2-binary

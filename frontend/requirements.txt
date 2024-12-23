@@ -1,0 +1,6 @@
+asyncio
+flask
+fastapi
+uvicorn
+sqlalchemy
+requests

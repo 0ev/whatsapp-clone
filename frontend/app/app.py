@@ -4,7 +4,7 @@ from config.config import SECRET_KEY
 import time
 from datetime import datetime
 
-BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = "http://backend:8000"
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -84,6 +84,7 @@ def messages(partner_id):
     if "token" not in session:
         flash(f"You need to be logged in to send messages", "warning")
         return redirect(url_for("login"))
+    app.logger.debug("before backend")
     response = requests.get(f"{BACKEND_URL}/messages", json={
             "token": session["token"],
             "partner_id":partner_id
