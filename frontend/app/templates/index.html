@@ -8,6 +8,19 @@
     </style>
 </head>
 <body>
+    <div id="flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-messages">
+            {% for category, message in messages|sort(attribute='category') %}
+                {% if category == 'success' %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endif %}
+            {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
     <form method="POST" action="/logout">
         <button type="submit">Log Out</button>
     </form>
@@ -26,18 +39,20 @@
             <button type="submit">Search</button>
         </form>
     </div>
-
     <div id="flash-messages">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div id="flash-messages">
-            {% for category, message in messages %}
+            {% for category, message in messages|sort(attribute='category') %}
+                {% if category == 'warning' %}
                 <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endif %}
             {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
     </div>
+
 <!--    <script>
     window.onload = function() {
         setTimeout(() => {
